@@ -228,6 +228,7 @@ dependencies = [
  "futures",
  "generic-array 0.14.7",
  "heapless",
+ "log",
  "managed",
  "smoltcp",
  "stable_deref_trait",

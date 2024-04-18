@@ -404,8 +404,10 @@
 //======================================================================
 
 use embassy_executor::Spawner;
-use embassy_net::tcp::TcpSocket;
-use embassy_net::{Config, Ipv4Address, Stack, StackResources};
+use embassy_net::{
+    tcp::TcpSocket,
+    {dns::DnsQueryType, Config, Stack, StackResources},
+};
 
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
@@ -418,6 +420,16 @@ use hal::clock::ClockControl;
 use hal::Rng;
 use hal::{embassy, peripherals::Peripherals, prelude::*, timer::TimerGroup};
 use static_cell::make_static;
+
+use rust_mqtt::{
+    client::{client::MqttClient, client_config::ClientConfig},
+    packet::v5::reason_codes::ReasonCode,
+    utils::rng_generator::CountingRng,
+};
+
+// Formatting related imports
+use core::fmt::Write;
+use heapless::String;
 
 // const SSID: &str = env!("SSID");
 // const PASSWORD: &str = env!("PASSWORD");
@@ -491,39 +503,85 @@ async fn main(spawner: Spawner) -> ! {
         let mut socket = TcpSocket::new(&stack, &mut rx_buffer, &mut tx_buffer);
 
         socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
+        let address = match stack
+            .dns_query("broker.hivemq.com", DnsQueryType::A)
+            .await
+            .map(|a| a[0])
+        {
+            Ok(address) => address,
+            Err(e) => {
+                println!("DNS lookup error: {e:?}");
+                continue;
+            }
+        };
 
-        let remote_endpoint = (Ipv4Address::new(142, 250, 185, 115), 80);
+        let remote_endpoint = (address, 1883);
         println!("connecting...");
-        let r = socket.connect(remote_endpoint).await;
-        if let Err(e) = r {
+        let connection = socket.connect(remote_endpoint).await;
+        if let Err(e) = connection {
             println!("connect error: {:?}", e);
             continue;
         }
         println!("connected!");
-        let mut buf = [0; 1024];
-        loop {
-            use embedded_io_async::Write;
-            let r = socket
-                .write_all(b"GET / HTTP/1.0\r\nHost: www.mobile-j.de\r\n\r\n")
-                .await;
-            if let Err(e) = r {
-                println!("write error: {:?}", e);
-                break;
-            }
-            let n = match socket.read(&mut buf).await {
-                Ok(0) => {
-                    println!("read EOF");
-                    break;
+
+        let mut config = ClientConfig::new(
+            rust_mqtt::client::client_config::MqttVersion::MQTTv5,
+            CountingRng(20000),
+        );
+        config.add_max_subscribe_qos(rust_mqtt::packet::v5::publish_packet::QualityOfService::QoS1);
+        config.add_client_id("clientId-8rhWgBODCl");
+        config.max_packet_size = 100;
+        let mut recv_buffer = [0; 80];
+        let mut write_buffer = [0; 80];
+
+        let mut client =
+            MqttClient::<_, 5, _>::new(socket, &mut write_buffer, 80, &mut recv_buffer, 80, config);
+
+        match client.connect_to_broker().await {
+            Ok(()) => {}
+            Err(mqtt_error) => match mqtt_error {
+                ReasonCode::NetworkError => {
+                    println!("MQTT Network Error");
+                    continue;
                 }
-                Ok(n) => n,
-                Err(e) => {
-                    println!("read error: {:?}", e);
-                    break;
+                _ => {
+                    println!("Other MQTT Error: {:?}", mqtt_error);
+                    continue;
                 }
-            };
-            println!("{}", core::str::from_utf8(&buf[..n]).unwrap());
+            },
         }
-        Timer::after(Duration::from_millis(3000)).await;
+
+        loop {
+            let temperature: f32 = 25.5;
+            println!("Current temperature: {}", temperature);
+
+            // Convert temperature into String
+            let mut temperature_string: String<32> = String::new();
+            write!(temperature_string, "{:.2}", temperature).expect("write! failed!");
+
+            match client
+                .send_message(
+                    "temperature/1",
+                    temperature_string.as_bytes(),
+                    rust_mqtt::packet::v5::publish_packet::QualityOfService::QoS1,
+                    true,
+                )
+                .await
+            {
+                Ok(()) => {}
+                Err(mqtt_error) => match mqtt_error {
+                    ReasonCode::NetworkError => {
+                        println!("MQTT Network Error");
+                        continue;
+                    }
+                    _ => {
+                        println!("Other MQTT Error: {:?}", mqtt_error);
+                        continue;
+                    }
+                },
+            }
+            Timer::after(Duration::from_millis(3000)).await;
+        }
     }
 }
 
