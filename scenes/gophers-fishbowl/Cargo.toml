@@ -12,7 +12,12 @@ esp-backtrace = { version = "0.11.0", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { version = "0.16.0", features = [ "esp32c3" ] }
+esp-hal = { version = "0.16.0", features = [
+    "esp32c3",
+    "embassy",
+    "embassy-executor-thread",
+    "embassy-time-timg0",
+] }
 esp-println = { version = "0.9.0", features = ["esp32c3", "log"] }
 log = { version = "0.4.20" }
 esp-alloc = { version = "0.3.0" }
@@ -23,6 +28,10 @@ esp-wifi = { version = "0.4.0", features = [
     "phy-enable-usb",
     "utils",
     "wifi-default",
+    "ble",
+    "coex",
+    "async",
+    "embassy-net",
 ] }
 heapless = { version = "0.8.0", default-features = false }
 smoltcp = { version = "0.11.0", default-features = false, features = [
@@ -36,6 +45,71 @@ smoltcp = { version = "0.11.0", default-features = false, features = [
     "socket-tcp",
     "socket-udp",
 ] }
+
+embedded-hal = { version = "0.2", features = ["unproven"] }
+embedded-hal-1 = { version = "1", package = "embedded-hal" }
+embedded-hal-async = { version = "1" }
+embedded-io-async = { version = "0.6" }
+
+embassy-executor = { version = "0.5.0", features = ["nightly"] }
+embassy-sync = { version = "0.5.0" }
+embassy-time = { version = "0.3.0", features = ["generic-queue-64"] }
+embassy-net = { version = "0.4.0", features = [
+    "tcp",
+    "udp",
+    "dhcpv4",
+    "medium-ethernet",
+] }
+
+cfg-if = "1.0.0"
+static_cell = { version = "2.0", features = ["nightly"] }
+
+# minimq = "0.8.0"
+# sequential-storage = "1"
+# miniconf = "0.9.0"
+
+# panic-persist = { version = "0.3", features = ["utf8", "custom-panic-handler"] }
+# sequential-storage = "0.6"
+# embedded-io = "0.6"
+# embedded-storage = "0.3"
+# cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
+# cortex-m-rt = { version = "0.7", features = ["device"] }
+# log = { version = "0.4", features = ["max_level_trace", "release_max_level_info"] }
+# rtt-target = "0.3"
+# serde = { version = "1.0", features = ["derive"], default-features = false }
+# serde-json-core = "0.5"
+# heapless = { version = "0.7.16", features = ["serde"] }
+# rtic = { version = "2.1", features = ["thumbv7-backend"] }
+# rtic-monotonics = { version = "1.0", features = ["cortex-m-systick"] }
+# embedded-hal = "0.2.7"
+# num_enum = { version = "0.7.2", default-features = false }
+# paste = "1"
+# idsp = "0.15.0"
+# ad9959 = { path = "ad9959", version = "0.2.1" }
+# serial-settings = {path = "serial-settings"}
+# mcp230xx = "1.0"
+# mutex-trait = "0.2"
+# fugit = "0.3"
+# rtt-logger = "0.2"
+# systick-monotonic = "1.0"
+# mono-clock = "0.1"
+# spin = { version = "0.9", default-features = false, features = ["spin_mutex"]}
+# shared-bus = { version = "0.3", features = ["cortex-m"] }
+# lm75 = "0.2"
+# enum-iterator = "1.4.1"
+# rand_xorshift = "0.3.0"
+# rand_core = "0.6.4"
+# minimq = "0.8.0"
+# usb-device = "0.3.2"
+# usbd-serial = "0.2"
+# # Keep this synced with the miniconf version in py/setup.py
+# miniconf = "0.9.0"
+# tca9539 = "0.2"
+# smoltcp-nal = { version = "0.4.1", features = ["shared-stack"]}
+# bbqueue = "0.5"
+# postcard = "1"
+# bit_field = "0.10.2"
+
 [profile.dev]
 # Rust debug is too slow. 
 # For debug builds always builds with some optimization
